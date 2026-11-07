@@ -55,6 +55,14 @@
             transition: transform .35s cubic-bezier(.32,.72,0,1), opacity .25s ease;
         }
         #toast.ativo { transform: translate(-50%, 0); opacity: 1; }
+        #toast.ativo.com-acao { pointer-events: auto; }
+
+        /* Janela do histórico de limpezas */
+        #historico .hist-fundo { opacity: 0; transition: opacity .25s ease; }
+        #historico .hist-painel { transform: translateY(100%); transition: transform .38s cubic-bezier(.32,.72,0,1), opacity .25s ease; }
+        @media (min-width: 640px) { #historico .hist-painel { transform: translateY(14px) scale(.96); opacity: 0; } }
+        #historico.aberto .hist-fundo { opacity: 1; }
+        #historico.aberto .hist-painel { transform: none; opacity: 1; }
 
         @media (min-width: 1024px) {
             #conteudo { max-width: 1100px; display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 1.5rem; align-items: start; }
@@ -115,6 +123,9 @@
                         <p class="text-[11px] text-green-100 font-medium">Preencha só quem recebeu muda</p>
                     </div>
                     <div class="flex items-center gap-1.5 shrink-0">
+                        <button type="button" onclick="abrirHistorico()" title="Histórico: restaurar dados apagados"
+                            class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors">
+                            <i data-lucide="history" class="w-4 h-4"></i></button>
                         <button type="button" onclick="limparTudo()" title="Apagar todas as quantidades e desmarcar todos os parceiros"
                             class="inline-flex items-center gap-1 text-[11px] font-bold px-3 py-1.5 rounded-full bg-white/20 text-white hover:bg-red-500 transition-colors">
                             <i data-lucide="eraser" class="w-3.5 h-3.5"></i> Limpar dados</button>
@@ -165,6 +176,10 @@
                     </div>
                     <div class="flex items-center gap-2">
                         <span id="rodapeTotal" class="text-lg font-black text-green-800 tabular-nums">0</span>
+                        <button type="button" onclick="abrirHistorico()" title="Histórico: restaurar dados apagados"
+                            class="inline-flex items-center gap-1 h-9 px-3 rounded-full text-[11px] font-bold text-sky-700 bg-white ring-1 ring-sky-200 hover:bg-sky-50 transition-colors">
+                            <i data-lucide="history" class="w-4 h-4"></i> Histórico
+                        </button>
                         <button type="button" onclick="limparTudo()" title="Apagar todas as quantidades e desmarcar todos os parceiros"
                             class="inline-flex items-center gap-1 h-9 px-3 rounded-full text-[11px] font-bold text-red-600 bg-white ring-1 ring-red-200 hover:bg-red-50 transition-colors">
                             <i data-lucide="eraser" class="w-4 h-4"></i> Limpar dados
@@ -225,7 +240,29 @@
     <!-- AVISO RÁPIDO -->
     <div id="toast" class="w-[calc(100%-2rem)] max-w-sm bg-slate-900/95 backdrop-blur text-white rounded-2xl shadow-2xl px-3.5 py-3 flex items-center gap-3" role="status" aria-live="polite">
         <div id="toastIcone" class="rounded-full p-1.5 shrink-0"></div>
-        <p id="toastTexto" class="text-[13px] font-bold leading-snug"></p>
+        <p id="toastTexto" class="flex-1 text-[13px] font-bold leading-snug"></p>
+        <button type="button" id="toastAcao" class="hidden shrink-0 text-[12px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-emerald-300"></button>
+    </div>
+
+    <!-- HISTÓRICO DAS LIMPEZAS: dá para restaurar os dados apagados -->
+    <div id="historico" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="historicoTitulo">
+        <div class="hist-fundo absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onclick="fecharHistorico()"></div>
+        <div class="absolute inset-0 flex items-end sm:items-center justify-center sm:p-5 pointer-events-none">
+            <div class="hist-painel pointer-events-auto bg-white w-full sm:max-w-md max-h-[85vh] flex flex-col rounded-t-[28px] sm:rounded-3xl shadow-2xl">
+                <div class="px-5 pt-3 sm:pt-5 pb-3 border-b border-slate-100">
+                    <div class="w-10 h-1.5 rounded-full bg-slate-200 mx-auto mb-4 sm:hidden"></div>
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0"><i data-lucide="history" class="w-5 h-5"></i></div>
+                        <div class="min-w-0 flex-1">
+                            <h3 id="historicoTitulo" class="text-base font-black text-slate-800">Dados apagados</h3>
+                            <p class="text-[11px] font-bold text-slate-400">Toque em Restaurar para trazer de volta</p>
+                        </div>
+                        <button type="button" onclick="fecharHistorico()" title="Fechar" class="p-2 rounded-xl text-slate-400 hover:bg-slate-100"><i data-lucide="x" class="w-5 h-5"></i></button>
+                    </div>
+                </div>
+                <div id="historicoLista" class="overflow-y-auto px-4 py-3 space-y-2 pb-[calc(1rem+env(safe-area-inset-bottom))]"></div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -401,7 +438,7 @@
             document.getElementById('marcarChips').innerHTML = estado.parceiros.length
                 ? estado.parceiros.map((p, i) => chip(marcado(p), `marcarParceiro(${i})`, esc(p))).join('')
                 : '<p class="text-xs text-slate-400">Nenhum parceiro na lista.</p>';
-            document.getElementById('contMarcados').innerText = nMarcados ? `${nMarcados} marcado${nMarcados === 1 ? '' : 's'}` : '';
+            document.getElementById('contMarcados').innerText = nMarcados ? `· ${nMarcados} marcado${nMarcados === 1 ? '' : 's'}` : '';
 
             if (!estado.parceiros.length) {
                 caixa.innerHTML = '<p class="text-xs text-slate-400 text-center py-6">Nenhum parceiro na lista. Toque em "Novo parceiro".</p>';
@@ -573,8 +610,14 @@
 
         // ===== Aviso rápido =====
         let timerToast = null;
-        function aviso(texto, tipo = 'ok') {
+        // acao (opcional) = { rotulo, fn }: botão no aviso (ex.: "Desfazer"), que fica mais tempo na tela
+        function aviso(texto, tipo = 'ok', acao) {
             const t = document.getElementById('toast');
+            const btn = document.getElementById('toastAcao');
+            btn.classList.toggle('hidden', !acao);
+            t.classList.toggle('com-acao', !!acao);
+            btn.onclick = acao ? () => { t.classList.remove('ativo'); acao.fn(); } : null;
+            if (acao) btn.textContent = acao.rotulo;
             const ic = document.getElementById('toastIcone');
             ic.className = `rounded-full p-1.5 shrink-0 ${tipo === 'erro' ? 'bg-amber-500' : 'bg-emerald-500'}`;
             ic.innerHTML = `<i data-lucide="${tipo === 'erro' ? 'alert-triangle' : 'check'}" class="w-4 h-4"></i>`;
@@ -582,7 +625,7 @@
             icones();
             t.classList.add('ativo');
             clearTimeout(timerToast);
-            timerToast = setTimeout(() => t.classList.remove('ativo'), 2600);
+            timerToast = setTimeout(() => t.classList.remove('ativo'), acao ? 8000 : 2600);
         }
 
         // ===== Cultura =====
@@ -688,22 +731,113 @@
             aviso(`Data ${diaMes(data)} aplicada a todos.`);
         };
 
+        // ===== Histórico das limpezas (fica salvo no aparelho, as 15 mais recentes) =====
+        const CHAVE_HISTORICO = 'plantio_parceiros_historico';
+        const MAX_HISTORICO = 15;
+        const lerHistorico = () => { try { return JSON.parse(localStorage.getItem(CHAVE_HISTORICO)) || []; } catch (e) { return []; } };
+        const gravarHistorico = h => localStorage.setItem(CHAVE_HISTORICO, JSON.stringify(h.slice(0, MAX_HISTORICO)));
+
+        const temDados = () => estado.marcados.length > 0 || Object.values(estado.entregas).some(e => totalEnt(e) > 0);
+
+        // Guarda uma cópia do que está na tela agora; devolve o id da cópia
+        function guardarNoHistorico(motivo) {
+            const lista = preenchidos();
+            const copia = {
+                id: Date.now(), quando: new Date().toISOString(), motivo,
+                entregas: JSON.parse(JSON.stringify(estado.entregas)), marcados: estado.marcados.slice(),
+                total: lista.reduce((s, e) => s + totalEnt(e), 0),
+                parceiros: lista.map(e => e.parceiro).filter((p, i, a) => a.indexOf(p) === i),
+                periodo: textoPeriodo(lista)
+            };
+            gravarHistorico([copia, ...lerHistorico()]);
+            return copia.id;
+        }
+
         // Tudo de uma vez: quantidades, variedades, culturas e datas voltam ao padrão e ninguém fica marcado
         window.limparTudo = () => {
-            const temQtd = Object.values(estado.entregas).some(e => totalEnt(e) > 0);
-            if (!temQtd && !estado.marcados.length) return aviso('Não há dados para limpar.', 'erro');
+            if (!temDados()) return aviso('Não há dados para limpar.', 'erro');
             abrirModal({
                 icone: 'eraser', tom: 'perigo', titulo: 'Limpar todos os dados?',
-                texto: 'Apaga as quantidades e variedades de todos os parceiros e desmarca todos, para começar um novo relatório.\nA lista de parceiros e as culturas cadastradas continuam salvas.', botao: 'Limpar',
+                texto: 'Apaga as quantidades e variedades de todos os parceiros e desmarca todos, para começar um novo relatório.\nA lista de parceiros e as culturas cadastradas continuam salvas.\nSe foi sem querer, dá para restaurar pelo Histórico.', botao: 'Limpar',
                 acao: () => {
+                    const id = guardarNoHistorico('Limpar dados');
                     estado.entregas = {};
                     estado.marcados = [];
                     cartaoAtivo = null;
                     salvar(); render();
-                    aviso('Dados limpos. Pode começar um novo relatório.');
+                    aviso('Dados limpos.', 'ok', { rotulo: 'Desfazer', fn: () => voltarDoHistorico(id, true) });
                 }
             });
         };
+
+        // Traz de volta uma cópia. O que estiver na tela antes também vai para o histórico (nada se perde).
+        // desfazer = veio do botão "Desfazer" logo depois de limpar: só volta, sem guardar a tela vazia
+        function voltarDoHistorico(id, desfazer) {
+            const h = lerHistorico();
+            const copia = h.find(c => c.id === id);
+            if (!copia) return aviso('Esse registro não está mais no histórico.', 'erro');
+            if (!desfazer && temDados()) guardarNoHistorico('Antes de restaurar');
+            // Parceiro que saiu da lista depois volta para ela
+            Object.keys(copia.entregas).concat(copia.marcados).forEach(p => { if (!estado.parceiros.includes(p)) estado.parceiros.push(p); });
+            estado.entregas = JSON.parse(JSON.stringify(copia.entregas));
+            estado.marcados = copia.marcados.slice();
+            gravarHistorico(lerHistorico().filter(c => c.id !== id));
+            salvar(); render();
+            fecharHistorico();
+            aviso(desfazer ? 'Pronto, os dados voltaram.' : 'Dados restaurados.');
+        }
+        window.restaurarHistorico = id => voltarDoHistorico(id, false);
+
+        window.abrirHistorico = () => {
+            renderHistorico();
+            const m = document.getElementById('historico');
+            m.classList.remove('hidden');
+            document.documentElement.style.overflow = 'hidden';
+            requestAnimationFrame(() => requestAnimationFrame(() => m.classList.add('aberto')));
+        };
+
+        function fecharHistorico() {
+            const m = document.getElementById('historico');
+            if (m.classList.contains('hidden')) return;
+            m.classList.remove('aberto');
+            document.documentElement.style.overflow = '';
+            setTimeout(() => { if (!m.classList.contains('aberto')) m.classList.add('hidden'); }, 380);
+        }
+        window.fecharHistorico = fecharHistorico;
+
+        window.apagarDoHistorico = id => {
+            gravarHistorico(lerHistorico().filter(c => c.id !== id));
+            renderHistorico();
+        };
+
+        function renderHistorico() {
+            const h = lerHistorico();
+            const quando = iso => {
+                const d = new Date(iso);
+                const dia = hojeIso(d) === hojeIso() ? 'Hoje' : d.toLocaleDateString('pt-BR');
+                return `${dia} às ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+            };
+            document.getElementById('historicoLista').innerHTML = h.length ? h.map(c => {
+                const nomes = c.parceiros.length ? c.parceiros.join(', ') : `${c.marcados.length} parceiro${c.marcados.length === 1 ? '' : 's'} marcado${c.marcados.length === 1 ? '' : 's'}, sem quantidade`;
+                return `<div class="rounded-2xl ring-1 ring-slate-200 p-3">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-sm font-black text-slate-800">${c.total ? fmt(c.total) : 'Sem quantidade'}${c.periodo ? ` <span class="text-xs font-bold text-slate-400">· ${esc(c.periodo)}</span>` : ''}</p>
+                            <p class="text-[11px] font-medium text-slate-500 mt-0.5">${esc(nomes)}</p>
+                            <p class="text-[10px] font-bold text-slate-400 mt-1 flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i>${esc(c.motivo)} · ${quando(c.quando)}</p>
+                        </div>
+                        <button type="button" onclick="apagarDoHistorico(${c.id})" title="Tirar do histórico"
+                            class="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg shrink-0"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                    <button type="button" onclick="restaurarHistorico(${c.id})"
+                        class="btn-primary mt-2.5 w-full flex items-center justify-center gap-1.5 text-xs font-bold py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Restaurar</button>
+                </div>`;
+            }).join('') : '<p class="text-xs text-slate-400 text-center py-8">Nada foi apagado ainda.<br>Quando você usar "Limpar dados", o que foi apagado aparece aqui.</p>';
+            icones();
+        }
+
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharHistorico(); });
 
         window.marcarTodos = todos => {
             estado.marcados = todos ? estado.parceiros.slice() : [];
