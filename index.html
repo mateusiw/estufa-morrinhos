@@ -7,8 +7,12 @@
     <meta name="theme-color" content="#ffffff">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="icon" type="image/png" href="./Logo Agrícola Estufa Morrinhos.png">
-    <link rel="apple-touch-icon" href="./Logo Agrícola Estufa Morrinhos.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Entregas">
+    <!-- App instalável (PWA): manifesto, ícones quadrados e service worker (sw.js) -->
+    <link rel="manifest" href="./manifest.webmanifest">
+    <link rel="icon" type="image/png" sizes="192x192" href="./icone-192.png">
+    <link rel="apple-touch-icon" href="./icone-192.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -180,12 +184,18 @@
                 <p class="text-[10px] font-semibold text-slate-400 tracking-wide">Estufa Morrinhos</p>
             </div>
         </div>
+        <div class="flex items-center gap-2 shrink-0">
+        <!-- Aparece só quando o navegador permite instalar o app -->
+        <button type="button" id="instalarBtn" onclick="instalarApp()" title="Instalar como aplicativo"
+            class="hidden items-center gap-1 h-9 px-3 rounded-xl text-[11px] font-black uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-600/25">
+            <i data-lucide="download" class="w-4 h-4"></i> Instalar</button>
         <div class="flex items-center gap-2 rounded-xl bg-slate-100/80 ring-1 ring-slate-200/70 px-2.5 sm:pr-3 py-1.5" title="Total entregue">
             <i data-lucide="sprout" class="hidden sm:block w-4 h-4 text-emerald-600"></i>
             <div class="flex flex-col items-center sm:items-start leading-none">
                 <span id="totalBadge" class="text-sm font-extrabold text-slate-900 tabular-nums">0</span>
                 <span class="text-[8px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Total</span>
             </div>
+        </div>
         </div>
     </div>
 
@@ -1240,6 +1250,37 @@
             document.addEventListener('focusout', e => { if (ehCampo(e.target)) barra.classList.remove('teclado'); });
             celular.addEventListener('change', () => { if (!celular.matches) barra.classList.remove('recolhida', 'teclado'); });
         }
+
+        // ===== Instalar como aplicativo (PWA) =====
+        // O service worker só funciona com o site num endereço https:// (ou localhost), não abrindo o arquivo direto
+        if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+            window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+        }
+        let pedidoInstalacao = null;
+        const botaoInstalar = mostrar => {
+            const b = document.getElementById('instalarBtn');
+            b.classList.toggle('hidden', !mostrar);
+            b.classList.toggle('inline-flex', mostrar);
+        };
+        // Chrome/Edge avisam quando o app pode ser instalado: guarda o pedido e mostra o botão "Instalar"
+        window.addEventListener('beforeinstallprompt', e => {
+            e.preventDefault();
+            pedidoInstalacao = e;
+            botaoInstalar(true);
+        });
+        window.instalarApp = async () => {
+            if (!pedidoInstalacao) return;
+            pedidoInstalacao.prompt();
+            const { outcome } = await pedidoInstalacao.userChoice;
+            pedidoInstalacao = null;
+            botaoInstalar(false);
+            if (outcome === 'accepted') aviso('Instalando o aplicativo...');
+        };
+        window.addEventListener('appinstalled', () => {
+            pedidoInstalacao = null;
+            botaoInstalar(false);
+            aviso('Aplicativo instalado! Ele já aparece na tela inicial.');
+        });
 
         // ===== Início =====
         // Volta para a aba usada da última vez (sem rolar a página)
