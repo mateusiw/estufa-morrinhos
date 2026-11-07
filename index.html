@@ -79,6 +79,87 @@
         .selo-editando { display: none; }
         .cartao-parceiro.editando .selo-editando { display: inline-flex; }
 
+        /* ===== BARRA DE ABAS NO CELULAR (mesmo estilo "liquid glass" do Registro de Irrigação) =====
+           Fica flutuando no rodapé; ao rolar a página para baixo ela recolhe num botão
+           redondo que leva de volta ao topo. No computador as duas colunas aparecem juntas. */
+        #tabBar, #tabBarTopo { display: none; }
+        @media (max-width: 1023px) {
+            body { padding-bottom: calc(110px + env(safe-area-inset-bottom)) !important; }
+            #toast { bottom: calc(96px + env(safe-area-inset-bottom)); }
+            .aba-oculta { display: none !important; }
+            /* Só uma coluna aparece por vez: sem o espaço de cima que separava as duas */
+            #colunaDireita { margin-top: 0 !important; }
+
+            #tabBar {
+                display: flex; position: fixed; z-index: 45;
+                left: max(12px, calc((100% - 420px) / 2));
+                bottom: calc(12px + env(safe-area-inset-bottom));
+                width: min(calc(100% - 24px), 420px); height: 64px;
+                padding: 5px; gap: 2px; overflow: hidden;
+                border-radius: 999px;
+                background: linear-gradient(180deg, rgba(255,255,255,0.62), rgba(255,255,255,0.42));
+                -webkit-backdrop-filter: blur(22px) saturate(190%);
+                backdrop-filter: blur(22px) saturate(190%);
+                border: 1px solid rgba(255,255,255,0.65);
+                box-shadow: 0 10px 30px rgba(15,23,42,0.18), 0 2px 6px rgba(15,23,42,0.08),
+                            inset 0 1px 1px rgba(255,255,255,0.9), inset 0 -1px 1px rgba(255,255,255,0.35);
+                transition: width 0.42s cubic-bezier(0.32, 0.72, 0, 1), height 0.42s cubic-bezier(0.32, 0.72, 0, 1),
+                            transform 0.3s ease, opacity 0.3s ease;
+            }
+            /* Reflexo de vidro no topo da barra */
+            #tabBar::before {
+                content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+                background: linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 45%);
+                opacity: 0.6;
+            }
+            #tabBar > button:not(#tabBarTopo) {
+                position: relative; flex: 1 1 0; min-width: 0; padding: 4px 6px;
+                display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+                border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: -0.02em;
+                white-space: nowrap; color: #475569; -webkit-tap-highlight-color: transparent;
+                transition: opacity 0.18s ease, transform 0.25s ease, background-color 0.25s ease, color 0.25s ease;
+            }
+            #tabBar > button:not(#tabBarTopo):active { transform: scale(0.92); }
+            #tabBar > button svg { width: 21px; height: 21px; }
+
+            /* Aba ativa: pílula translúcida tingida com a cor da aba */
+            #tabBar > #tabBtnEntregas  { --cor: 22, 163, 74; }
+            #tabBar > #tabBtnMensagem  { --cor: 5, 150, 105; }
+            #tabBar > #tabBtnHistorico { --cor: 2, 132, 199; }
+            #tabBar > button.aba-ativa:not(#tabBarTopo) {
+                color: rgb(var(--cor)); font-weight: 800;
+                background: rgba(var(--cor), 0.14);
+                box-shadow: inset 0 0 0 1px rgba(var(--cor), 0.22), inset 0 1px 0 rgba(255,255,255,0.7),
+                            0 3px 10px rgba(var(--cor), 0.18);
+            }
+            #tabBar > button.aba-ativa:not(#tabBarTopo) svg { stroke-width: 2.4; }
+
+            /* Contador de parceiros na aba Mensagem */
+            .tab-badge {
+                position: absolute; top: 2px; left: calc(50% + 6px);
+                min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px;
+                background: #059669; color: #fff; font-size: 9px; font-weight: 900; line-height: 17px; text-align: center;
+                box-shadow: 0 0 0 2px rgba(255,255,255,0.9);
+            }
+
+            /* Botão "voltar ao topo" (só aparece com a barra recolhida) */
+            #tabBarTopo {
+                display: flex; align-items: center; justify-content: center;
+                position: absolute; left: 0; top: 0; width: 52px; height: 52px;
+                border-radius: 999px; color: #0f172a;
+                opacity: 0; pointer-events: none; transform: scale(0.6);
+                transition: opacity 0.25s ease, transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+            }
+            #tabBarTopo svg { width: 22px; height: 22px; }
+            #tabBar.recolhida { width: 52px; height: 52px; }
+            #tabBar.recolhida > button:not(#tabBarTopo) { opacity: 0; transform: scale(0.7); pointer-events: none; }
+            #tabBar.recolhida #tabBarTopo { opacity: 1; pointer-events: auto; transform: scale(1); transition-delay: 0.08s; }
+            #tabBar.recolhida #tabBarTopo:active { transform: scale(0.9); }
+
+            /* Teclado aberto: a barra sai da frente dos campos */
+            #tabBar.teclado { transform: translateY(160%); opacity: 0; pointer-events: none; }
+        }
+
         /* Tela larga: usa mais a largura e coloca os cartões dos parceiros lado a lado */
         @media (min-width: 1280px) {
             #conteudo { max-width: min(1680px, calc(100vw - 4rem)); grid-template-columns: minmax(0, 1fr) 440px; gap: 2rem; }
@@ -110,37 +191,39 @@
 
     <div id="conteudo" class="container mx-auto p-4 space-y-6 max-w-md">
 
-        <!-- COLUNA ESQUERDA: mensagem e entregas -->
-        <div class="space-y-6">
+        <!-- COLUNA ESQUERDA (aba "Entregas" no celular) -->
+        <div id="painelEntregas" class="space-y-6">
 
             <!-- ENTREGAS POR PARCEIRO (a saudação é automática pelo horário, só no texto) -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div class="bg-gradient-to-r from-green-600 to-green-700 px-5 py-4 flex justify-between items-center gap-2">
+                <div class="bg-gradient-to-r from-green-600 to-green-700 px-4 sm:px-5 py-4 flex justify-between items-center gap-2">
                     <div class="min-w-0">
                         <h2 class="text-base font-bold text-white flex items-center gap-2">
-                            <i data-lucide="sprout" class="w-5 h-5 opacity-90"></i> Entregas por parceiro
+                            <i data-lucide="sprout" class="w-5 h-5 opacity-90 shrink-0"></i> <span class="truncate">Entregas<span class="hidden sm:inline"> por parceiro</span></span>
                         </h2>
                         <p class="text-[11px] text-green-100 font-medium">Preencha só quem recebeu muda</p>
                     </div>
                     <div class="flex items-center gap-1.5 shrink-0">
+                        <!-- No celular o histórico fica na barra de baixo -->
                         <button type="button" onclick="abrirHistorico()" title="Histórico: restaurar dados apagados"
-                            class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors">
+                            class="hidden lg:inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors">
                             <i data-lucide="history" class="w-4 h-4"></i></button>
-                        <button type="button" onclick="limparTudo()" title="Apagar todas as quantidades e desmarcar todos os parceiros"
-                            class="inline-flex items-center gap-1 text-[11px] font-bold px-3 py-1.5 rounded-full bg-white/20 text-white hover:bg-red-500 transition-colors">
-                            <i data-lucide="eraser" class="w-3.5 h-3.5"></i> Limpar dados</button>
+                        <button type="button" onclick="limparTudo()" title="Limpar dados: apagar todas as quantidades e desmarcar todos os parceiros" aria-label="Limpar dados"
+                            class="inline-flex items-center justify-center gap-1 text-[11px] font-bold w-8 h-8 sm:w-auto sm:h-auto sm:px-3 sm:py-1.5 rounded-full bg-white/20 text-white hover:bg-red-500 transition-colors">
+                            <i data-lucide="eraser" class="w-3.5 h-3.5"></i><span class="hidden sm:inline">Limpar dados</span></button>
                         <button type="button" onclick="alternarGerenciarParceiros()" id="gerenciarBtn"></button>
                     </div>
                 </div>
 
                 <!-- Mesma data para todos -->
                 <div class="px-4 py-3 border-b border-slate-100 bg-slate-50/70">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Mesma data para todos</p>
+                    <p class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                        <i data-lucide="calendar" class="w-3.5 h-3.5 text-green-500"></i> Mesma data para todos</p>
                     <div class="flex gap-2">
                         <input type="date" id="dataTodos"
-                            class="flex-1 bg-white border-2 border-slate-200 rounded-xl py-2 px-3 text-sm font-medium text-slate-800">
+                            class="flex-1 min-w-0 bg-white border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm font-medium text-slate-800">
                         <button type="button" onclick="aplicarDataTodos()"
-                            class="btn-primary inline-flex items-center gap-1.5 px-3.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shrink-0">
+                            class="btn-primary inline-flex items-center gap-1.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shrink-0">
                             <i data-lucide="calendar-check" class="w-4 h-4"></i> Aplicar
                         </button>
                     </div>
@@ -149,12 +232,14 @@
                 <!-- Quem recebeu: só os marcados aparecem nos cartões e na mensagem -->
                 <div class="px-4 py-3 border-b border-slate-100">
                     <div class="flex items-center justify-between gap-2 mb-2">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Marque quem recebeu <span id="contMarcados" class="normal-case text-emerald-700"></span></p>
+                        <p class="flex items-center gap-1.5 min-w-0 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                            <i data-lucide="users" class="w-3.5 h-3.5 text-green-500 shrink-0"></i>
+                            <span class="truncate">Quem recebeu <span id="contMarcados" class="normal-case text-emerald-700"></span></span></p>
                         <div class="flex items-center gap-1 shrink-0">
                             <button type="button" onclick="marcarTodos(true)"
-                                class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200">Todos</button>
+                                class="text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200">Todos</button>
                             <button type="button" onclick="marcarTodos(false)"
-                                class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200">Nenhum</button>
+                                class="text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200">Nenhum</button>
                         </div>
                     </div>
                     <div id="marcarChips" class="flex flex-wrap gap-1.5"></div>
@@ -177,20 +262,26 @@
                     <div class="flex items-center gap-2">
                         <span id="rodapeTotal" class="text-lg font-black text-green-800 tabular-nums">0</span>
                         <button type="button" onclick="abrirHistorico()" title="Histórico: restaurar dados apagados"
-                            class="inline-flex items-center gap-1 h-9 px-3 rounded-full text-[11px] font-bold text-sky-700 bg-white ring-1 ring-sky-200 hover:bg-sky-50 transition-colors">
+                            class="hidden lg:inline-flex items-center gap-1 h-9 px-3 rounded-full text-[11px] font-bold text-sky-700 bg-white ring-1 ring-sky-200 hover:bg-sky-50 transition-colors">
                             <i data-lucide="history" class="w-4 h-4"></i> Histórico
                         </button>
                         <button type="button" onclick="limparTudo()" title="Apagar todas as quantidades e desmarcar todos os parceiros"
                             class="inline-flex items-center gap-1 h-9 px-3 rounded-full text-[11px] font-bold text-red-600 bg-white ring-1 ring-red-200 hover:bg-red-50 transition-colors">
-                            <i data-lucide="eraser" class="w-4 h-4"></i> Limpar dados
+                            <i data-lucide="eraser" class="w-4 h-4"></i> Limpar<span class="hidden sm:inline"> dados</span>
                         </button>
                     </div>
                 </div>
             </div>
+
+            <!-- Celular: atalho para a aba Mensagem depois de preencher -->
+            <button type="button" onclick="trocarAba('mensagem')"
+                class="lg:hidden btn-primary w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-2xl shadow-md shadow-emerald-600/20 text-sm flex items-center justify-center gap-2">
+                <i data-lucide="message-circle" class="w-5 h-5"></i> VER MENSAGEM E PDF
+            </button>
         </div>
 
-        <!-- COLUNA DIREITA: texto -->
-        <div id="colunaDireita" class="space-y-6">
+        <!-- COLUNA DIREITA: texto (aba "Mensagem" no celular) -->
+        <div id="colunaDireita" class="space-y-6 aba-oculta lg:block">
             <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div class="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
                     <div class="w-8 h-8 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center shrink-0"><i data-lucide="message-circle" class="w-4 h-4"></i></div>
@@ -213,6 +304,24 @@
             </section>
         </div>
     </div>
+
+    <!-- BARRA DE ABAS DO CELULAR (no computador as duas colunas aparecem juntas) -->
+    <nav id="tabBar" aria-label="Seções">
+        <button type="button" id="tabBtnEntregas" onclick="trocarAba('entregas')" class="aba-ativa">
+            <i data-lucide="sprout"></i> Entregas
+        </button>
+        <button type="button" id="tabBtnMensagem" onclick="trocarAba('mensagem')">
+            <i data-lucide="message-circle"></i> Mensagem
+            <span id="tabBadgeMensagem" class="tab-badge hidden"></span>
+        </button>
+        <button type="button" id="tabBtnHistorico" onclick="abrirHistorico()">
+            <i data-lucide="history"></i> Histórico
+        </button>
+        <!-- Com a barra recolhida, sobra só este botão para voltar ao topo -->
+        <button type="button" id="tabBarTopo" onclick="voltarAoTopo()" title="Voltar ao topo" aria-label="Voltar ao topo">
+            <i data-lucide="arrow-up"></i>
+        </button>
+    </nav>
 
     <!-- JANELA ÚNICA (confirmações e campos): sobe de baixo no celular -->
     <div id="modal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitulo">
@@ -351,6 +460,17 @@
                 .sort((a, b) => a.data.localeCompare(b.data) || a.ordem - b.ordem);
         }
 
+        // Data de uma variedade: a dela (quando o parceiro tem mais de uma) ou a do parceiro
+        const dataItem = (e, i) => i.data || e.data;
+
+        // Uma linha por variedade entregue, com a data dela, em ordem de data (empate: ordem da lista)
+        function linhasEntrega(lista = preenchidos()) {
+            return lista.flatMap(e => e.itens.filter(i => Number(i.qtd) > 0).map(i => ({
+                parceiro: e.parceiro, ordem: e.ordem, cultura: culturaDe(e),
+                qtd: Number(i.qtd), variedade: i.variedade, data: dataItem(e, i)
+            }))).sort((a, b) => a.data.localeCompare(b.data) || a.ordem - b.ordem);
+        }
+
         // "Dia 5 a 10 de outubro" / "Dia 28 de outubro a 2 de novembro" / "Dia 5 de outubro"
         function textoPeriodo(lista) {
             if (!lista.length) return '';
@@ -386,20 +506,19 @@
         // ===== Texto da mensagem (formato do grupo) =====
         // Um bloco por cultura; com mais de uma cultura, cada bloco tem o seu total
         function montarTexto(nome) {
-            const lista = preenchidos();
-            const total = lista.reduce((s, e) => s + totalEnt(e), 0);
+            const linhas = linhasEntrega();
+            const total = linhas.reduce((s, l) => s + l.qtd, 0);
             const L = [`${saudacaoAuto()}!`, ''];
-            if (lista.length) {
-                const grupos = porCultura(lista);
+            if (linhas.length) {
+                const grupos = porCultura(linhas);
                 grupos.forEach(g => {
                     L.push(`*${g.cultura} - Entrega ${periodoTitulo(g.lista)}*`);
                     L.push('');
-                    // Uma linha por variedade: o mesmo parceiro se repete em cada uma
-                    g.lista.forEach(e => e.itens.filter(i => Number(i.qtd) > 0)
-                        .forEach(i => L.push(`${e.parceiro} - ${textoItem(i)} - ${diaMes(e.data)}`)));
+                    // Uma linha por variedade, cada uma com a sua data: o mesmo parceiro se repete em cada uma
+                    g.lista.forEach(l => L.push(`${l.parceiro} - ${textoItem(l)} - ${diaMes(l.data)}`));
                     L.push('');
                     if (grupos.length > 1) {
-                        L.push(`*Total de ${g.cultura}: ${fmt(g.lista.reduce((s, e) => s + totalEnt(e), 0))}*`);
+                        L.push(`*Total de ${g.cultura}: ${fmt(g.lista.reduce((s, l) => s + l.qtd, 0))}*`);
                         L.push('');
                     }
                 });
@@ -438,7 +557,7 @@
             document.getElementById('marcarChips').innerHTML = estado.parceiros.length
                 ? estado.parceiros.map((p, i) => chip(marcado(p), `marcarParceiro(${i})`, esc(p))).join('')
                 : '<p class="text-xs text-slate-400">Nenhum parceiro na lista.</p>';
-            document.getElementById('contMarcados').innerText = nMarcados ? `· ${nMarcados} marcado${nMarcados === 1 ? '' : 's'}` : '';
+            document.getElementById('contMarcados').innerText = nMarcados ? `· ${nMarcados}` : '';
 
             if (!estado.parceiros.length) {
                 caixa.innerHTML = '<p class="text-xs text-slate-400 text-center py-6">Nenhum parceiro na lista. Toque em "Novo parceiro".</p>';
@@ -450,8 +569,16 @@
                     if (!gerenciandoParceiros && !marcado(p)) return '';
                     const e = entregaDe(p);
                     const t = totalEnt(e);
+                    // Mais de uma variedade: cada uma tem a sua data (pode ter sido entregue em outro dia)
+                    const variasDatas = e.itens.length > 1;
                     const itensHtml = e.itens.map((it, k) => `
                         <div class="space-y-1.5">
+                            ${variasDatas ? `<label class="flex items-center gap-2">
+                                <i data-lucide="calendar" class="w-4 h-4 text-emerald-600 shrink-0"></i>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Entregue em</span>
+                                <input type="date" value="${esc(dataItem(e, it))}" onchange="mudarDataItem(${i}, ${k}, this.value)" aria-label="Data da variedade ${k + 1} de ${esc(p)}"
+                                    class="flex-1 min-w-0 bg-white border-2 border-slate-200 rounded-xl py-1.5 px-3 text-sm font-medium text-slate-800">
+                            </label>` : ''}
                             <div class="flex items-center gap-2">
                                 <input type="text" inputmode="numeric" autocomplete="off" placeholder="Quantidade" value="${it.qtd ? fmt(it.qtd) : ''}"
                                     oninput="digitarQtd(${i}, ${k}, this)" aria-label="Quantidade entregue a ${esc(p)}"
@@ -485,11 +612,11 @@
                                         <i data-lucide="user-minus" class="w-3.5 h-3.5"></i> Tirar</button>`
                                 : `<span id="total_${i}" class="text-sm font-black tabular-nums ${t ? 'text-emerald-700' : 'text-slate-300'}">${t ? fmt(t) : '—'}</span>`}
                         </div>
-                        <label class="flex items-center gap-2">
+                        ${variasDatas ? '' : `<label class="flex items-center gap-2">
                             <i data-lucide="calendar" class="w-4 h-4 text-emerald-600 shrink-0"></i>
                             <input type="date" value="${esc(e.data)}" onchange="mudarData(${i}, this.value)" aria-label="Data da entrega a ${esc(p)}"
                                 class="flex-1 bg-white border-2 border-slate-200 rounded-xl py-1.5 px-3 text-sm font-medium text-slate-800">
-                        </label>
+                        </label>`}
                         <div class="flex flex-wrap items-center gap-1.5" role="group" aria-label="Cultura entregue a ${esc(p)}">
                             ${estado.culturas.map((c, ci) => {
                                 const ativo = culturaDe(e) === c;
@@ -540,7 +667,11 @@
             document.getElementById('totalBadge').innerText = fmt(total);
             document.getElementById('rodapeTotal').innerText = fmt(total);
             document.getElementById('rodapeQtd').innerText = lista.length
-                ? `${lista.length} parceiro${lista.length === 1 ? '' : 's'} · ${textoPeriodo(lista)}` : 'Nenhuma entrega preenchida';
+                ? `${lista.length} parceiro${lista.length === 1 ? '' : 's'} · ${textoPeriodo(linhasEntrega(lista))}` : 'Nenhuma entrega preenchida';
+            // Quantos parceiros entram na mensagem (bolinha na aba Mensagem do celular)
+            const badge = document.getElementById('tabBadgeMensagem');
+            badge.textContent = lista.length;
+            badge.classList.toggle('hidden', !lista.length);
             // *negrito* do WhatsApp vira negrito na prévia
             document.getElementById('previa').innerHTML = esc(montarTexto(REMETENTE)).replace(/\*([^*\n]+)\*/g, '<b>$1</b>');
         }
@@ -711,22 +842,37 @@
         };
 
         // Segunda variedade já vem com a que ainda não foi usada (ex.: MASTER TSV + BRO 68 SYNGENTA)
+        // Com mais de uma variedade, cada uma guarda a sua data; a nova começa com a data do parceiro
         window.adicionarItem = i => {
             const e = entregaDe(estado.parceiros[i]);
             const livre = VARIEDADES.find(v => !e.itens.some(it => it.variedade === v)) || '';
-            e.itens.push({ qtd: '', variedade: livre });
+            e.itens.forEach(it => { it.data = dataItem(e, it); });
+            e.itens.push({ qtd: '', variedade: livre, data: e.data });
             salvar(); renderParceiros();
         };
 
         window.removerItem = (i, k) => {
-            entregaDe(estado.parceiros[i]).itens.splice(k, 1);
+            const e = entregaDe(estado.parceiros[i]);
+            e.itens.splice(k, 1);
+            // Sobrou uma variedade só: a data dela volta a ser a data do parceiro
+            if (e.itens.length === 1) { e.data = dataItem(e, e.itens[0]); delete e.itens[0].data; }
             salvar(); renderParceiros(); renderResumo();
+        };
+
+        // Data de uma variedade; a do parceiro fica sendo a mais antiga (ordem da lista e do texto)
+        window.mudarDataItem = (i, k, valor) => {
+            if (!valor) return;
+            const e = entregaDe(estado.parceiros[i]);
+            e.itens[k].data = valor;
+            e.data = e.itens.map(it => dataItem(e, it)).sort()[0];
+            salvar(); renderResumo();
         };
 
         window.aplicarDataTodos = () => {
             const data = document.getElementById('dataTodos').value;
             if (!data) return aviso('Escolha a data.', 'erro');
-            estado.parceiros.forEach(p => { entregaDe(p).data = data; });
+            // Vale para todas as variedades de todos os parceiros
+            estado.parceiros.forEach(p => { const e = entregaDe(p); e.data = data; e.itens.forEach(it => { if (it.data) it.data = data; }); });
             salvar(); renderParceiros(); renderResumo();
             aviso(`Data ${diaMes(data)} aplicada a todos.`);
         };
@@ -747,7 +893,7 @@
                 entregas: JSON.parse(JSON.stringify(estado.entregas)), marcados: estado.marcados.slice(),
                 total: lista.reduce((s, e) => s + totalEnt(e), 0),
                 parceiros: lista.map(e => e.parceiro).filter((p, i, a) => a.indexOf(p) === i),
-                periodo: textoPeriodo(lista)
+                periodo: textoPeriodo(linhasEntrega(lista))
             };
             gravarHistorico([copia, ...lerHistorico()]);
             return copia.id;
@@ -939,12 +1085,12 @@
                 await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
                 const logo = await logoDataUrl();
 
-                // Uma linha por variedade, como na mensagem
-                const linhas = [];
-                lista.forEach(e => e.itens.filter(i => Number(i.qtd) > 0).forEach(i => linhas.push({
-                    parceiro: e.parceiro, cultura: culturaDe(e), variedade: i.variedade ? i.variedade.trim().toUpperCase() : '—',
-                    qtd: Number(i.qtd), entrega: e.data, colheita: somarDias(e.data, DIAS_COLHEITA)
-                })));
+                // Uma linha por variedade, cada uma com a sua data de entrega, como na mensagem
+                const linhasData = linhasEntrega(lista);
+                const linhas = linhasData.map(l => ({
+                    parceiro: l.parceiro, cultura: l.cultura, variedade: l.variedade ? l.variedade.trim().toUpperCase() : '—',
+                    qtd: l.qtd, entrega: l.data, colheita: somarDias(l.data, DIAS_COLHEITA)
+                }));
                 const total = linhas.reduce((s, l) => s + l.qtd, 0);
                 const colheitas = linhas.map(l => l.colheita).sort();
                 const faixa = faixaSem(colheitas);
@@ -989,7 +1135,7 @@
                 doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(30, 41, 59);
                 doc.text('Resumo de Entrega - Estufa Morrinhos', M + 22, 17);
                 doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(100, 116, 139);
-                doc.text(`${culturas} - Entrega ${periodoTitulo(lista)}`, M + 22, 22.5);
+                doc.text(`${culturas} - Entrega ${periodoTitulo(linhasData)}`, M + 22, 22.5);
                 const agora = new Date();
                 doc.text(`Emitido em ${agora.toLocaleDateString('pt-BR')} ${fmtHora(agora)} por ${REMETENTE}`, M + 22, 27);
                 y = 32;
@@ -1039,8 +1185,8 @@
                 }
 
                 // "Resumo de Entrega - Estufa Morrinhos - 02-11 a 06-11.pdf"
-                const periodoArq = (lista[0].data === lista[lista.length - 1].data
-                    ? diaMes(lista[0].data) : `${diaMes(lista[0].data)} a ${diaMes(lista[lista.length - 1].data)}`).replace(/\//g, '-');
+                const primeira = entregas[0], ultima = entregas[entregas.length - 1];
+                const periodoArq = (primeira === ultima ? diaMes(primeira) : `${diaMes(primeira)} a ${diaMes(ultima)}`).replace(/\//g, '-');
                 doc.save(`Resumo de Entrega - Estufa Morrinhos - ${periodoArq}.pdf`);
             } catch (err) {
                 console.error(err);
@@ -1052,7 +1198,57 @@
             }
         };
 
+        // ===== Abas do celular (Entregas / Mensagem) =====
+        // No computador as duas colunas aparecem juntas: a classe .aba-oculta só vale no celular
+        window.trocarAba = aba => {
+            const mensagem = aba === 'mensagem';
+            document.getElementById('painelEntregas').classList.toggle('aba-oculta', mensagem);
+            document.getElementById('colunaDireita').classList.toggle('aba-oculta', !mensagem);
+            document.getElementById('tabBtnEntregas').classList.toggle('aba-ativa', !mensagem);
+            document.getElementById('tabBtnMensagem').classList.toggle('aba-ativa', mensagem);
+            try { localStorage.setItem('plantio_parceiros_aba', mensagem ? 'mensagem' : 'entregas'); } catch (e) {}
+            document.getElementById('tabBar').classList.remove('recolhida');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        {
+            const barra = document.getElementById('tabBar');
+            const celular = window.matchMedia ? window.matchMedia('(max-width: 1023px)')
+                : { get matches() { return window.innerWidth <= 1023; }, addEventListener() {} };
+            let ultimoY = window.scrollY, agendado = false;
+            const recolher = sim => barra.classList.toggle('recolhida', sim && celular.matches);
+
+            // Rolou para baixo: recolhe num botão redondo; rolou para cima (ou voltou ao topo): abre de novo
+            window.addEventListener('scroll', () => {
+                if (agendado) return;
+                agendado = true;
+                requestAnimationFrame(() => {
+                    agendado = false;
+                    const y = window.scrollY, delta = y - ultimoY;
+                    if (y < 80) recolher(false);
+                    else if (delta > 8) recolher(true);
+                    else if (delta < -8) recolher(false);
+                    if (Math.abs(delta) > 8 || y < 80) ultimoY = y;
+                });
+            }, { passive: true });
+
+            window.voltarAoTopo = () => { recolher(false); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+
+            // Teclado aberto: a barra sai da frente dos campos
+            const ehCampo = el => el && el.matches && el.matches('input:not([type=checkbox]):not([type=radio]), textarea, select');
+            document.addEventListener('focusin', e => { if (ehCampo(e.target)) barra.classList.add('teclado'); });
+            document.addEventListener('focusout', e => { if (ehCampo(e.target)) barra.classList.remove('teclado'); });
+            celular.addEventListener('change', () => { if (!celular.matches) barra.classList.remove('recolhida', 'teclado'); });
+        }
+
         // ===== Início =====
+        // Volta para a aba usada da última vez (sem rolar a página)
+        if ((() => { try { return localStorage.getItem('plantio_parceiros_aba'); } catch (e) { return null; } })() === 'mensagem') {
+            document.getElementById('painelEntregas').classList.add('aba-oculta');
+            document.getElementById('colunaDireita').classList.remove('aba-oculta');
+            document.getElementById('tabBtnEntregas').classList.remove('aba-ativa');
+            document.getElementById('tabBtnMensagem').classList.add('aba-ativa');
+        }
         document.getElementById('dataTodos').value = hojeIso();
         render();
         // Saudação acompanha o relógio do aparelho (ex.: passou do meio-dia vira "Boa tarde")
