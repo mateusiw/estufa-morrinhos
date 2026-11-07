@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Entrega dos Parceiros</title>
+    <meta name="theme-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="icon" type="image/png" href="./Logo Agrícola Estufa Morrinhos.png">
+    <link rel="apple-touch-icon" href="./Logo Agrícola Estufa Morrinhos.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-tap-highlight-color: transparent; }
+        input[type=date] { -webkit-appearance: none; appearance: none; min-width: 0; max-width: 100%; min-height: 2.5rem; }
+        input[type=date]::-webkit-date-and-time-value { text-align: left; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #34d399 !important; background-color: #fff !important; box-shadow: 0 0 0 4px rgba(52,211,153,0.15); }
+        .btn-primary { transition: transform 0.1s, background-color 0.15s, box-shadow 0.15s; }
+        .btn-primary:active { transform: scale(0.97); }
+        .cartao-parceiro { transition: background-color .2s, box-shadow .2s; }
+
+        /* Cabeçalho igual ao do Registro de Irrigação: vidro claro com um fio de cor no topo */
+        #navbar {
+            background: rgba(255,255,255,0.78);
+            -webkit-backdrop-filter: blur(18px) saturate(180%);
+            backdrop-filter: blur(18px) saturate(180%);
+            border-bottom: 1px solid rgba(226,232,240,0.9);
+            box-shadow: 0 6px 24px -18px rgba(15,23,42,0.35);
+        }
+        #navbar::before {
+            content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; pointer-events: none;
+            background: linear-gradient(90deg, #10b981, #14b8a6 35%, #0ea5e9 70%, #6366f1);
+        }
+
+        /* Prévia no estilo de mensagem do WhatsApp */
+        .balao-wpp { background: #e7ffdb; border-radius: 12px 12px 12px 4px; box-shadow: 0 1px 1px rgba(0,0,0,0.08); }
+        .balao-wpp b { font-weight: 800; }
+
+        /* ===== Janela (pop-up): sobe de baixo no celular, aparece no centro no computador ===== */
+        .modal-fundo { opacity: 0; transition: opacity .25s ease; }
+        .modal-painel { transform: translateY(100%); transition: transform .38s cubic-bezier(.32,.72,0,1), opacity .25s ease; }
+        @media (min-width: 640px) {
+            .modal-painel { transform: translateY(14px) scale(.96); opacity: 0; }
+        }
+        #modal.aberto .modal-fundo { opacity: 1; }
+        #modal.aberto .modal-painel { transform: none; opacity: 1; }
+
+        /* ===== Aviso rápido (toast) ===== */
+        #toast {
+            position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); z-index: 60;
+            transform: translate(-50%, 140%); opacity: 0; pointer-events: none;
+            transition: transform .35s cubic-bezier(.32,.72,0,1), opacity .25s ease;
+        }
+        #toast.ativo { transform: translate(-50%, 0); opacity: 1; }
+
+        @media (min-width: 1024px) {
+            #conteudo { max-width: 1100px; display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 1.5rem; align-items: start; }
+            #conteudo > * { margin-top: 0 !important; }
+            #colunaDireita { position: sticky; top: 76px; }
+        }
+
+        /* Cartão do parceiro que está sendo editado: contorno verde, sombra e selo "Editando" */
+        .cartao-parceiro { position: relative; }
+        .cartao-parceiro.editando {
+            background-color: #fff !important;
+            box-shadow: 0 0 0 2px #10b981, 0 14px 30px -14px rgba(16,185,129,0.6) !important;
+        }
+        .selo-editando { display: none; }
+        .cartao-parceiro.editando .selo-editando { display: inline-flex; }
+
+        /* Tela larga: usa mais a largura e coloca os cartões dos parceiros lado a lado */
+        @media (min-width: 1280px) {
+            #conteudo { max-width: min(1680px, calc(100vw - 4rem)); grid-template-columns: minmax(0, 1fr) 440px; gap: 2rem; }
+            #listaParceiros { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0.875rem; align-items: start; }
+            #listaParceiros > * { margin-top: 0 !important; }
+            #listaParceiros > p { grid-column: 1 / -1; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen pb-24">
+
+    <!-- Navbar -->
+    <div id="navbar" class="text-slate-900 px-4 py-2.5 flex justify-between items-center sticky top-0 z-40">
+        <div class="flex items-center gap-2.5 min-w-0">
+            <img src="./Logo Agrícola Estufa Morrinhos.png" alt="Estufa Morrinhos" class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white object-contain shadow-sm ring-1 ring-black/5 shrink-0" onerror="this.style.display='none'">
+            <div class="min-w-0">
+                <h1 class="text-sm sm:text-[15px] font-extrabold leading-tight tracking-tight text-slate-900 truncate">Entrega dos Parceiros</h1>
+                <p class="text-[10px] font-semibold text-slate-400 tracking-wide">Estufa Morrinhos</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 rounded-xl bg-slate-100/80 ring-1 ring-slate-200/70 px-2.5 sm:pr-3 py-1.5" title="Total entregue">
+            <i data-lucide="sprout" class="hidden sm:block w-4 h-4 text-emerald-600"></i>
+            <div class="flex flex-col items-center sm:items-start leading-none">
+                <span id="totalBadge" class="text-sm font-extrabold text-slate-900 tabular-nums">0</span>
+                <span class="text-[8px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Total</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="conteudo" class="container mx-auto p-4 space-y-6 max-w-md">
+
+        <!-- COLUNA ESQUERDA: mensagem e entregas -->
+        <div class="space-y-6">
+
+            <!-- ENTREGAS POR PARCEIRO (a saudação é automática pelo horário, só no texto) -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-green-600 to-green-700 px-5 py-4 flex justify-between items-center gap-2">
+                    <div class="min-w-0">
+                        <h2 class="text-base font-bold text-white flex items-center gap-2">
+                            <i data-lucide="sprout" class="w-5 h-5 opacity-90"></i> Entregas por parceiro
+                        </h2>
+                        <p class="text-[11px] text-green-100 font-medium">Preencha só quem recebeu muda</p>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <button type="button" onclick="limparTudo()" title="Apagar todas as quantidades e desmarcar todos os parceiros"
+                            class="inline-flex items-center gap-1 text-[11px] font-bold px-3 py-1.5 rounded-full bg-white/20 text-white hover:bg-red-500 transition-colors">
+                            <i data-lucide="eraser" class="w-3.5 h-3.5"></i> Limpar dados</button>
+                        <button type="button" onclick="alternarGerenciarParceiros()" id="gerenciarBtn"></button>
+                    </div>
+                </div>
+
+                <!-- Mesma data para todos -->
+                <div class="px-4 py-3 border-b border-slate-100 bg-slate-50/70">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Mesma data para todos</p>
+                    <div class="flex gap-2">
+                        <input type="date" id="dataTodos"
+                            class="flex-1 bg-white border-2 border-slate-200 rounded-xl py-2 px-3 text-sm font-medium text-slate-800">
+                        <button type="button" onclick="aplicarDataTodos()"
+                            class="btn-primary inline-flex items-center gap-1.5 px-3.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shrink-0">
+                            <i data-lucide="calendar-check" class="w-4 h-4"></i> Aplicar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Quem recebeu: só os marcados aparecem nos cartões e na mensagem -->
+                <div class="px-4 py-3 border-b border-slate-100">
+                    <div class="flex items-center justify-between gap-2 mb-2">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Marque quem recebeu <span id="contMarcados" class="normal-case text-emerald-700"></span></p>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <button type="button" onclick="marcarTodos(true)"
+                                class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200">Todos</button>
+                            <button type="button" onclick="marcarTodos(false)"
+                                class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200">Nenhum</button>
+                        </div>
+                    </div>
+                    <div id="marcarChips" class="flex flex-wrap gap-1.5"></div>
+                </div>
+
+                <div id="listaParceiros" class="p-3 space-y-2.5"></div>
+
+                <div class="px-4 pb-3">
+                    <button type="button" onclick="novoParceiro()"
+                        class="w-full flex items-center justify-center gap-1.5 text-[11px] font-black uppercase tracking-wider py-2.5 rounded-xl border-2 border-dashed border-emerald-300 text-emerald-700 hover:bg-emerald-50 transition-colors">
+                        <i data-lucide="user-plus" class="w-4 h-4"></i> Novo parceiro
+                    </button>
+                </div>
+
+                <div class="flex justify-between items-center gap-2 px-4 py-3 bg-green-50 border-t border-green-100">
+                    <div>
+                        <span class="block text-xs font-black text-green-800 uppercase tracking-wider">Total entregue</span>
+                        <span id="rodapeQtd" class="block text-[10px] font-bold text-green-700/70"></span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span id="rodapeTotal" class="text-lg font-black text-green-800 tabular-nums">0</span>
+                        <button type="button" onclick="limparTudo()" title="Apagar todas as quantidades e desmarcar todos os parceiros"
+                            class="inline-flex items-center gap-1 h-9 px-3 rounded-full text-[11px] font-bold text-red-600 bg-white ring-1 ring-red-200 hover:bg-red-50 transition-colors">
+                            <i data-lucide="eraser" class="w-4 h-4"></i> Limpar dados
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- COLUNA DIREITA: texto -->
+        <div id="colunaDireita" class="space-y-6">
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+                    <div class="w-8 h-8 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center shrink-0"><i data-lucide="message-circle" class="w-4 h-4"></i></div>
+                    <div class="min-w-0">
+                        <h3 class="text-sm font-black text-slate-800 leading-tight">Texto para o WhatsApp</h3>
+                        <p class="text-[11px] font-bold text-slate-400">Prévia de como vai aparecer no grupo</p>
+                    </div>
+                </div>
+                <div class="p-4 bg-[#efeae2]">
+                    <div id="previa" class="balao-wpp px-3 py-2.5 text-[14px] leading-snug text-slate-800 whitespace-pre-wrap break-words max-w-sm"></div>
+                </div>
+                <div class="p-4 grid gap-2">
+                    <button type="button" onclick="copiarTexto()" class="btn-primary bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-2xl shadow-md shadow-emerald-600/20 text-sm flex items-center justify-center gap-2">
+                        <i data-lucide="copy" class="w-4 h-4"></i> COPIAR TEXTO
+                    </button>
+                    <button type="button" id="pdfBtn" onclick="gerarPdf()" class="btn-primary bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 rounded-2xl shadow-md shadow-slate-800/20 text-sm flex items-center justify-center gap-2">
+                        <i data-lucide="file-down" class="w-4 h-4"></i> GERAR PDF DETALHADO
+                    </button>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- JANELA ÚNICA (confirmações e campos): sobe de baixo no celular -->
+    <div id="modal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitulo">
+        <div class="modal-fundo absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onclick="fecharModal()"></div>
+        <div class="absolute inset-0 flex items-end sm:items-center justify-center sm:p-5 pointer-events-none">
+            <form id="modalPainel" onsubmit="confirmarModal(event)"
+                class="modal-painel pointer-events-auto bg-white w-full sm:max-w-sm rounded-t-[28px] sm:rounded-3xl shadow-2xl px-6 pt-3 sm:pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pb-6 text-center">
+                <div class="w-10 h-1.5 rounded-full bg-slate-200 mx-auto mb-5 sm:hidden"></div>
+                <div id="modalIcone" class="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 mx-auto"></div>
+                <h3 id="modalTitulo" class="text-lg font-black text-slate-800"></h3>
+                <p id="modalTexto" class="text-[13px] text-slate-500 mt-1.5 font-medium leading-relaxed px-1 whitespace-pre-line"></p>
+                <div id="modalCampoArea" class="hidden mt-4 text-left">
+                    <input type="text" id="modalCampo" maxlength="30" autocomplete="off"
+                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-base font-bold text-slate-800 text-center">
+                    <p id="modalErro" class="hidden text-xs font-bold text-red-500 mt-2 text-center"></p>
+                </div>
+                <div class="flex gap-2.5 mt-6">
+                    <button type="button" onclick="fecharModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3.5 rounded-2xl text-sm transition-colors">Cancelar</button>
+                    <button type="submit" id="modalBtn" class="btn-primary flex-1 text-white font-bold py-3.5 rounded-2xl shadow-md text-sm"></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- AVISO RÁPIDO -->
+    <div id="toast" class="w-[calc(100%-2rem)] max-w-sm bg-slate-900/95 backdrop-blur text-white rounded-2xl shadow-2xl px-3.5 py-3 flex items-center gap-3" role="status" aria-live="polite">
+        <div id="toastIcone" class="rounded-full p-1.5 shrink-0"></div>
+        <p id="toastTexto" class="text-[13px] font-bold leading-snug"></p>
+    </div>
+
+    <script>
+        // ===== Estado (fica salvo no aparelho) =====
+        const CHAVE = 'plantio_parceiros_v1';
+        const PARCEIROS_PADRAO = ['Edivan', 'Valdir', 'Fazenda Oásis', 'Oliveira', 'Rafael', 'Evandro', 'Filho'];
+        const VARIEDADES = ['MASTER TSV', 'BRO 68 SYNGENTA'];
+        const REMETENTE = 'Vanessa Messias';   // quem envia a mensagem no grupo
+        const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
+        const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const fmt = n => Number(n || 0).toLocaleString('pt-BR');
+        const hojeIso = (d = new Date()) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+        const diaMes = iso => { const [, m, d] = iso.split('-'); return `${d}/${m}`; };
+        const icones = () => { if (typeof lucide !== 'undefined') lucide.createIcons(); };
+        const capitalizar = s => s.charAt(0).toUpperCase() + s.slice(1);
+        const itemVazio = () => ({ qtd: '', variedade: '' });
+        const CULTURA_PADRAO = 'Brócolis';
+        const entregaVazia = () => ({ data: hojeIso(), cultura: CULTURA_PADRAO, itens: [itemVazio()] });
+        const culturaDe = e => (e && e.cultura) || CULTURA_PADRAO;
+        const totalEnt = e => (e ? e.itens.reduce((s, i) => s + (Number(i.qtd) || 0), 0) : 0);
+
+        let estado = (() => {
+            try { return JSON.parse(localStorage.getItem(CHAVE)) || null; } catch (e) { return null; }
+        })() || {};
+        estado = Object.assign({
+            parceiros: PARCEIROS_PADRAO.slice(),
+            culturas: ['Brócolis'],
+            entregas: {}           // { parceiro: { data: 'aaaa-mm-dd', cultura, itens: [{ qtd, variedade }] } }
+        }, estado);
+        // A cultura agora é por parceiro (a antiga escolha geral deixa de existir)
+        delete estado.cultura;
+        if (!estado.culturas.includes(CULTURA_PADRAO)) estado.culturas.unshift(CULTURA_PADRAO);
+
+        {
+            // "Oássis"/"Oásis" salvo no aparelho passa a ser "Fazenda Oásis"
+            const renomear = n => /^o[aá]s+is$/i.test(String(n).trim()) ? 'Fazenda Oásis' : n;
+            estado.parceiros = [...new Set(estado.parceiros.map(renomear))];
+            const entregas = {};
+            Object.entries(estado.entregas || {}).forEach(([p, e]) => { entregas[renomear(p)] = e; });
+            // Versão anterior (um lançamento por vez): junta os de cada parceiro, com a primeira data
+            (estado.lancamentos || []).slice().sort((a, b) => a.data.localeCompare(b.data)).forEach(l => {
+                const p = renomear(l.parceiro);
+                if (!estado.parceiros.includes(p)) estado.parceiros.push(p);
+                const e = entregas[p] && totalEnt(entregas[p]) ? entregas[p] : (entregas[p] = { data: l.data, itens: [] });
+                e.itens.push(...l.itens.map(i => ({ ...i })));
+            });
+            delete estado.lancamentos;
+            estado.entregas = entregas;
+            // Primeira vez com a marcação: já vêm marcados os que têm quantidade preenchida
+            if (!Array.isArray(estado.marcados)) estado.marcados = estado.parceiros.filter(p => totalEnt(entregas[p]) > 0);
+            estado.marcados = estado.marcados.map(renomear).filter(p => estado.parceiros.includes(p));
+            localStorage.setItem(CHAVE, JSON.stringify(estado));
+        }
+
+        let gerenciandoParceiros = false;
+        let cartaoAtivo = null;   // nome do parceiro cujo cartão está sendo editado (destaque)
+
+        // Tocar/focar dentro de um cartão destaca ele; tocar fora de qualquer cartão tira o destaque
+        function marcarCartaoAtivo(alvo) {
+            if (alvo.closest && alvo.closest('#modal')) return;
+            const cartao = alvo.closest ? alvo.closest('.cartao-parceiro') : null;
+            const nome = cartao ? cartao.dataset.nome : null;
+            if (nome === cartaoAtivo) return;
+            cartaoAtivo = nome;
+            document.querySelectorAll('.cartao-parceiro').forEach(c => c.classList.toggle('editando', c.dataset.nome === nome));
+        }
+        document.addEventListener('pointerdown', e => marcarCartaoAtivo(e.target));
+        document.addEventListener('focusin', e => marcarCartaoAtivo(e.target));
+
+        function salvar() { localStorage.setItem(CHAVE, JSON.stringify(estado)); }
+        function entregaDe(p) { return estado.entregas[p] = estado.entregas[p] || entregaVazia(); }
+        const marcado = p => estado.marcados.includes(p);
+
+        function saudacaoAuto() {
+            const h = new Date().getHours();
+            return h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+        }
+
+        // Parceiros marcados e com quantidade, em ordem de data (empate: ordem da lista)
+        function preenchidos() {
+            return estado.parceiros
+                .map((p, ordem) => ({ parceiro: p, ordem, ...(estado.entregas[p] || entregaVazia()) }))
+                .filter(e => marcado(e.parceiro))
+                .filter(e => totalEnt(e) > 0 && e.data)
+                .sort((a, b) => a.data.localeCompare(b.data) || a.ordem - b.ordem);
+        }
+
+        // "Dia 5 a 10 de outubro" / "Dia 28 de outubro a 2 de novembro" / "Dia 5 de outubro"
+        function textoPeriodo(lista) {
+            if (!lista.length) return '';
+            const de = lista[0].data, ate = lista[lista.length - 1].data;
+            const [y1, m1, d1] = de.split('-').map(Number);
+            const [y2, m2, d2] = ate.split('-').map(Number);
+            if (de === ate) return `Dia ${d1} de ${MESES[m1 - 1]}`;
+            if (m1 === m2 && y1 === y2) return `Dia ${d1} a ${d2} de ${MESES[m1 - 1]}`;
+            return `Dia ${d1} de ${MESES[m1 - 1]} a ${d2} de ${MESES[m2 - 1]}`;
+        }
+
+        // Para o título: "do dia 5 de outubro" (um dia só) ou "de 2 a 6 de novembro" (período)
+        function periodoTitulo(lista) {
+            const t = textoPeriodo(lista);
+            return / a \d/.test(t) ? t.replace(/^Dia/, 'de') : t.replace(/^Dia/, 'do dia');
+        }
+
+        // "4.000 BRO 68 SYNGENTA" ou "6.000"
+        const textoItem = i => `${fmt(i.qtd)}${i.variedade ? ' ' + i.variedade.trim().toUpperCase() : ''}`;
+
+        // Separa a lista por cultura, na ordem em que cada cultura aparece
+        function porCultura(lista) {
+            const grupos = [];
+            lista.forEach(e => {
+                const c = culturaDe(e);
+                let g = grupos.find(x => x.cultura === c);
+                if (!g) grupos.push(g = { cultura: c, lista: [] });
+                g.lista.push(e);
+            });
+            return grupos;
+        }
+
+        // ===== Texto da mensagem (formato do grupo) =====
+        // Um bloco por cultura; com mais de uma cultura, cada bloco tem o seu total
+        function montarTexto(nome) {
+            const lista = preenchidos();
+            const total = lista.reduce((s, e) => s + totalEnt(e), 0);
+            const L = [`${saudacaoAuto()}!`, ''];
+            if (lista.length) {
+                const grupos = porCultura(lista);
+                grupos.forEach(g => {
+                    L.push(`*${g.cultura} - Entrega ${periodoTitulo(g.lista)}*`);
+                    L.push('');
+                    // Uma linha por variedade: o mesmo parceiro se repete em cada uma
+                    g.lista.forEach(e => e.itens.filter(i => Number(i.qtd) > 0)
+                        .forEach(i => L.push(`${e.parceiro} - ${textoItem(i)} - ${diaMes(e.data)}`)));
+                    L.push('');
+                    if (grupos.length > 1) {
+                        L.push(`*Total de ${g.cultura}: ${fmt(g.lista.reduce((s, e) => s + totalEnt(e), 0))}*`);
+                        L.push('');
+                    }
+                });
+                L.push(`*Total: ${fmt(total)}*`);
+                L.push('');
+            }
+            L.push(`Enviado por: ${nome}`);
+            return L.join('\n');
+        }
+
+        // ===== Componentes visuais =====
+        function chip(ativo, onclick, conteudo, extra = '') {
+            return `<button type="button" onclick="${onclick}" aria-pressed="${ativo}"
+                class="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-full text-xs font-bold select-none transition-all duration-150 active:scale-95 ${ativo
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25 ring-1 ring-emerald-600'
+                    : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-emerald-300 hover:bg-emerald-50/60'} ${extra}">${conteudo}${ativo ? '<i data-lucide="check" class="w-3.5 h-3.5"></i>' : ''}</button>`;
+        }
+
+        // Bolinha com a inicial do parceiro, numa cor fixa por nome
+        const CORES_AVATAR = ['#dbeafe:#1d4ed8', '#dcfce7:#15803d', '#fef3c7:#b45309', '#fce7f3:#be185d', '#ede9fe:#6d28d9', '#cffafe:#0e7490', '#ffedd5:#c2410c'];
+        function avatar(nome) {
+            const soma = String(nome).split('').reduce((s, c) => s + c.charCodeAt(0), 0);
+            const [fundo, tinta] = CORES_AVATAR[soma % CORES_AVATAR.length].split(':');
+            const inicial = esc(String(nome).replace(/^fazenda\s+/i, '').trim().charAt(0).toUpperCase());
+            return `<span class="inline-flex items-center justify-center w-9 h-9 rounded-full text-sm font-black shrink-0" style="background:${fundo};color:${tinta}">${inicial}</span>`;
+        }
+
+        // ===== Renderização =====
+        const CLASSE_CARTAO_CHEIO = ['bg-emerald-50/60', 'ring-emerald-300'];
+        const CLASSE_CARTAO_VAZIO = ['bg-white', 'ring-slate-200'];
+
+        // Um cartão por parceiro: nome, data e as quantidades com a variedade
+        function renderParceiros() {
+            const caixa = document.getElementById('listaParceiros');
+            const nMarcados = estado.parceiros.filter(marcado).length;
+            document.getElementById('marcarChips').innerHTML = estado.parceiros.length
+                ? estado.parceiros.map((p, i) => chip(marcado(p), `marcarParceiro(${i})`, esc(p))).join('')
+                : '<p class="text-xs text-slate-400">Nenhum parceiro na lista.</p>';
+            document.getElementById('contMarcados').innerText = nMarcados ? `${nMarcados} marcado${nMarcados === 1 ? '' : 's'}` : '';
+
+            if (!estado.parceiros.length) {
+                caixa.innerHTML = '<p class="text-xs text-slate-400 text-center py-6">Nenhum parceiro na lista. Toque em "Novo parceiro".</p>';
+            } else if (!nMarcados && !gerenciandoParceiros) {
+                caixa.innerHTML = '<p class="text-xs text-slate-400 text-center py-6">Marque acima os parceiros que receberam muda.</p>';
+            } else {
+                // Editando a lista aparecem todos (para poder tirar); senão, só os marcados
+                caixa.innerHTML = estado.parceiros.map((p, i) => {
+                    if (!gerenciandoParceiros && !marcado(p)) return '';
+                    const e = entregaDe(p);
+                    const t = totalEnt(e);
+                    const itensHtml = e.itens.map((it, k) => `
+                        <div class="space-y-1.5">
+                            <div class="flex items-center gap-2">
+                                <input type="text" inputmode="numeric" autocomplete="off" placeholder="Quantidade" value="${it.qtd ? fmt(it.qtd) : ''}"
+                                    oninput="digitarQtd(${i}, ${k}, this)" aria-label="Quantidade entregue a ${esc(p)}"
+                                    class="flex-1 min-w-0 bg-white border-2 border-slate-200 rounded-xl py-2.5 px-3 text-base font-black text-slate-800">
+                                ${e.itens.length > 1 ? `<button type="button" onclick="removerItem(${i}, ${k})" title="Tirar esta variedade"
+                                    class="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl shrink-0 transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : ''}
+                            </div>
+                            <div class="grid grid-cols-2 gap-1.5">
+                                ${VARIEDADES.map(v => {
+                                    const ativo = it.variedade === v;
+                                    return `<button type="button" onclick="escolherVariedade(${i}, ${k}, '${v}')" aria-pressed="${ativo}"
+                                        class="flex items-center gap-1.5 rounded-lg px-2 py-2 text-left transition-all active:scale-[.98] ${ativo
+                                            ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/25' : 'bg-white ring-1 ring-slate-200 text-slate-600 hover:ring-emerald-300'}">
+                                        <span class="w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${ativo ? 'bg-white/25' : 'ring-2 ring-inset ring-slate-300'}">
+                                            ${ativo ? '<i data-lucide="check" class="w-3 h-3"></i>' : ''}</span>
+                                        <span class="text-[10px] font-black leading-tight">${v}</span>
+                                    </button>`;
+                                }).join('')}
+                            </div>
+                        </div>`).join('<div class="border-t border-dashed border-slate-200"></div>');
+
+                    return `
+                    <div id="cartao_${i}" data-nome="${esc(p)}" class="cartao-parceiro rounded-2xl ring-1 p-3 space-y-2.5 ${(t ? CLASSE_CARTAO_CHEIO : CLASSE_CARTAO_VAZIO).join(' ')}${p === cartaoAtivo ? ' editando' : ''}">
+                        <span class="selo-editando absolute -top-2.5 right-3 items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[9px] font-black uppercase tracking-wider shadow-sm">
+                            <i data-lucide="pencil" class="w-2.5 h-2.5"></i> Editando</span>
+                        <div class="flex items-center gap-2.5">
+                            ${avatar(p)}
+                            <p class="flex-1 min-w-0 text-sm font-black text-slate-800 truncate">${esc(p)}</p>
+                            ${gerenciandoParceiros
+                                ? `<button type="button" onclick="removerParceiro(${i})" class="inline-flex items-center gap-1 h-8 px-3 rounded-full text-[11px] font-bold text-red-600 bg-red-50 ring-1 ring-red-200 hover:bg-red-100">
+                                        <i data-lucide="user-minus" class="w-3.5 h-3.5"></i> Tirar</button>`
+                                : `<span id="total_${i}" class="text-sm font-black tabular-nums ${t ? 'text-emerald-700' : 'text-slate-300'}">${t ? fmt(t) : '—'}</span>`}
+                        </div>
+                        <label class="flex items-center gap-2">
+                            <i data-lucide="calendar" class="w-4 h-4 text-emerald-600 shrink-0"></i>
+                            <input type="date" value="${esc(e.data)}" onchange="mudarData(${i}, this.value)" aria-label="Data da entrega a ${esc(p)}"
+                                class="flex-1 bg-white border-2 border-slate-200 rounded-xl py-1.5 px-3 text-sm font-medium text-slate-800">
+                        </label>
+                        <div class="flex flex-wrap items-center gap-1.5" role="group" aria-label="Cultura entregue a ${esc(p)}">
+                            ${estado.culturas.map((c, ci) => {
+                                const ativo = culturaDe(e) === c;
+                                return `<button type="button" onclick="escolherCultura(${i}, ${ci})" aria-pressed="${ativo}"
+                                    class="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-[11px] font-bold transition-all active:scale-95 ${ativo
+                                        ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/25'
+                                        : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-emerald-300'}">
+                                    <i data-lucide="${ativo ? 'check' : 'sprout'}" class="w-3 h-3"></i>${esc(c)}</button>`;
+                            }).join('')}
+                            <button type="button" onclick="novaCultura(${i})"
+                                class="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-[11px] font-bold text-emerald-700 border border-dashed border-emerald-300 hover:bg-emerald-50 active:scale-95">
+                                <i data-lucide="plus" class="w-3 h-3"></i>Outra</button>
+                        </div>
+                        ${itensHtml}
+                        <button type="button" onclick="adicionarItem(${i})"
+                            class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 hover:text-emerald-800 px-1">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i> Outra variedade</button>
+                    </div>`;
+                }).join('');
+            }
+
+            const btn = document.getElementById('gerenciarBtn');
+            btn.innerHTML = gerenciandoParceiros ? '<i data-lucide="check" class="w-3.5 h-3.5"></i> Pronto' : '<i data-lucide="pencil" class="w-3.5 h-3.5"></i> Editar lista';
+            btn.className = `inline-flex items-center gap-1 text-[11px] font-bold px-3 py-1.5 rounded-full shrink-0 transition-colors ${gerenciandoParceiros
+                ? 'bg-white text-green-800 shadow-sm' : 'bg-white/20 text-white hover:bg-white/30'}`;
+            icones();
+        }
+
+        // Atualiza só o cartão do parceiro (sem redesenhar a lista, para não perder o que está sendo digitado)
+        function atualizarCartao(i) {
+            const t = totalEnt(estado.entregas[estado.parceiros[i]]);
+            const cartao = document.getElementById('cartao_' + i);
+            if (cartao) {
+                cartao.classList.remove(...CLASSE_CARTAO_CHEIO, ...CLASSE_CARTAO_VAZIO);
+                cartao.classList.add(...(t ? CLASSE_CARTAO_CHEIO : CLASSE_CARTAO_VAZIO));
+            }
+            const tot = document.getElementById('total_' + i);
+            if (tot) {
+                tot.innerText = t ? fmt(t) : '—';
+                tot.className = `text-sm font-black tabular-nums ${t ? 'text-emerald-700' : 'text-slate-300'}`;
+            }
+        }
+
+        // Totais e prévia
+        function renderResumo() {
+            const lista = preenchidos();
+            const total = lista.reduce((s, e) => s + totalEnt(e), 0);
+            document.getElementById('totalBadge').innerText = fmt(total);
+            document.getElementById('rodapeTotal').innerText = fmt(total);
+            document.getElementById('rodapeQtd').innerText = lista.length
+                ? `${lista.length} parceiro${lista.length === 1 ? '' : 's'} · ${textoPeriodo(lista)}` : 'Nenhuma entrega preenchida';
+            // *negrito* do WhatsApp vira negrito na prévia
+            document.getElementById('previa').innerHTML = esc(montarTexto(REMETENTE)).replace(/\*([^*\n]+)\*/g, '<b>$1</b>');
+        }
+
+        function render() {
+            renderParceiros();
+            renderResumo();
+            icones();
+        }
+
+        // ===== Janela (pop-up) =====
+        // o = { icone, tom: 'ok' | 'perigo', titulo, texto, campo: { placeholder, valor }, botao, acao(valor) }
+        // acao devolve uma mensagem de erro (texto) para manter a janela aberta
+        let modalAcao = null;
+        const TONS = {
+            ok:     { icone: 'bg-emerald-50 text-emerald-600', botao: 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/25' },
+            perigo: { icone: 'bg-red-50 text-red-500',         botao: 'bg-red-600 hover:bg-red-700 shadow-red-600/25' }
+        };
+
+        function abrirModal(o) {
+            const tom = TONS[o.tom] || TONS.ok;
+            document.getElementById('modalIcone').className = `w-14 h-14 rounded-2xl flex items-center justify-center mb-4 mx-auto ${tom.icone}`;
+            document.getElementById('modalIcone').innerHTML = `<i data-lucide="${o.icone || 'info'}" class="w-7 h-7"></i>`;
+            document.getElementById('modalTitulo').innerText = o.titulo;
+            const texto = document.getElementById('modalTexto');
+            texto.innerText = o.texto || '';
+            texto.classList.toggle('hidden', !o.texto);
+            const area = document.getElementById('modalCampoArea'), campo = document.getElementById('modalCampo');
+            area.classList.toggle('hidden', !o.campo);
+            document.getElementById('modalErro').classList.add('hidden');
+            if (o.campo) { campo.value = o.campo.valor || ''; campo.placeholder = o.campo.placeholder || ''; }
+            const btn = document.getElementById('modalBtn');
+            btn.innerText = o.botao;
+            btn.className = `btn-primary flex-1 text-white font-bold py-3.5 rounded-2xl shadow-md text-sm ${tom.botao}`;
+            modalAcao = o.acao;
+
+            const m = document.getElementById('modal');
+            m.classList.remove('hidden');
+            document.documentElement.style.overflow = 'hidden';
+            requestAnimationFrame(() => requestAnimationFrame(() => m.classList.add('aberto')));
+            icones();
+            setTimeout(() => (o.campo ? campo : btn).focus({ preventScroll: true }), 320);
+        }
+
+        window.fecharModal = () => {
+            const m = document.getElementById('modal');
+            m.classList.remove('aberto');
+            modalAcao = null;
+            document.documentElement.style.overflow = '';
+            setTimeout(() => { if (!m.classList.contains('aberto')) m.classList.add('hidden'); }, 380);
+        };
+
+        window.confirmarModal = e => {
+            e.preventDefault();
+            const temCampo = !document.getElementById('modalCampoArea').classList.contains('hidden');
+            const valor = document.getElementById('modalCampo').value.replace(/\s+/g, ' ').trim();
+            const erro = document.getElementById('modalErro');
+            if (temCampo && !valor) { erro.innerText = 'Preencha o campo.'; erro.classList.remove('hidden'); return; }
+            const r = modalAcao ? modalAcao(valor) : null;
+            if (typeof r === 'string') { erro.innerText = r; erro.classList.remove('hidden'); return; }
+            window.fecharModal();
+        };
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && document.getElementById('modal').classList.contains('aberto')) window.fecharModal();
+        });
+
+        // ===== Aviso rápido =====
+        let timerToast = null;
+        function aviso(texto, tipo = 'ok') {
+            const t = document.getElementById('toast');
+            const ic = document.getElementById('toastIcone');
+            ic.className = `rounded-full p-1.5 shrink-0 ${tipo === 'erro' ? 'bg-amber-500' : 'bg-emerald-500'}`;
+            ic.innerHTML = `<i data-lucide="${tipo === 'erro' ? 'alert-triangle' : 'check'}" class="w-4 h-4"></i>`;
+            document.getElementById('toastTexto').innerText = texto;
+            icones();
+            t.classList.add('ativo');
+            clearTimeout(timerToast);
+            timerToast = setTimeout(() => t.classList.remove('ativo'), 2600);
+        }
+
+        // ===== Cultura =====
+        // Cada parceiro tem a sua cultura (padrão: Brócolis)
+        window.escolherCultura = (i, ci) => {
+            entregaDe(estado.parceiros[i]).cultura = estado.culturas[ci];
+            salvar(); renderParceiros(); renderResumo();
+        };
+        window.novaCultura = i => {
+            const p = estado.parceiros[i];
+            abrirModal({
+                icone: 'sprout', titulo: 'Nova cultura', texto: `Fica escolhida para ${p} e salva na lista para os outros parceiros.`,
+                campo: { placeholder: 'Ex.: Couve-flor' }, botao: 'Adicionar',
+                acao: nome => {
+                    const igual = estado.culturas.find(c => c.toLowerCase() === nome.toLowerCase());
+                    const cultura = igual || capitalizar(nome);
+                    if (!igual) estado.culturas.push(cultura);
+                    entregaDe(p).cultura = cultura;
+                    cartaoAtivo = p;
+                    salvar(); render();
+                    aviso(`${cultura} escolhida para ${p}.`);
+                }
+            });
+        };
+
+        // ===== Parceiros =====
+        window.alternarGerenciarParceiros = () => { gerenciandoParceiros = !gerenciandoParceiros; renderParceiros(); };
+        window.marcarParceiro = i => {
+            const p = estado.parceiros[i];
+            estado.marcados = marcado(p) ? estado.marcados.filter(m => m !== p) : [...estado.marcados, p];
+            salvar(); renderParceiros(); renderResumo();
+        };
+        window.novoParceiro = () => abrirModal({
+            icone: 'user-plus', titulo: 'Novo parceiro', texto: 'Ele entra no fim da lista e fica salvo para as próximas entregas.',
+            campo: { placeholder: 'Nome do parceiro' }, botao: 'Adicionar',
+            acao: nome => {
+                if (estado.parceiros.some(p => p.toLowerCase() === nome.toLowerCase())) return `${nome} já está na lista.`;
+                estado.parceiros.push(capitalizar(nome));
+                estado.marcados.push(capitalizar(nome));   // novo parceiro já vem marcado
+                salvar(); render();
+                aviso(`${capitalizar(nome)} adicionado.`);
+                const ultimo = document.getElementById('cartao_' + (estado.parceiros.length - 1));
+                if (ultimo) ultimo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+        window.removerParceiro = i => {
+            const nome = estado.parceiros[i];
+            const t = totalEnt(estado.entregas[nome]);
+            abrirModal({
+                icone: 'user-minus', tom: 'perigo', titulo: `Tirar ${nome}?`,
+                texto: t ? `A entrega preenchida dele (${fmt(t)}) também sai da mensagem.` : 'Sai da lista de parceiros.', botao: 'Tirar da lista',
+                acao: () => {
+                    estado.parceiros = estado.parceiros.filter(p => p !== nome);
+                    estado.marcados = estado.marcados.filter(p => p !== nome);
+                    delete estado.entregas[nome];
+                    salvar(); render();
+                }
+            });
+        };
+
+        // ===== Preenchimento =====
+        window.digitarQtd = (i, k, campo) => {
+            const digitosAntes = campo.value.slice(0, campo.selectionStart).replace(/\D/g, '').length;
+            const digitos = campo.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+            entregaDe(estado.parceiros[i]).itens[k].qtd = digitos ? Number(digitos) : '';
+            campo.value = digitos ? fmt(Number(digitos)) : '';
+            let pos = 0;
+            for (let vistos = 0; pos < campo.value.length && vistos < digitosAntes; pos++) if (/\d/.test(campo.value[pos])) vistos++;
+            campo.setSelectionRange(pos, pos);
+            salvar(); atualizarCartao(i); renderResumo();
+        };
+
+        window.mudarData = (i, valor) => {
+            entregaDe(estado.parceiros[i]).data = valor;
+            salvar(); renderResumo();
+        };
+
+        // Toque de novo na mesma variedade desmarca (fica sem variedade)
+        window.escolherVariedade = (i, k, v) => {
+            const it = entregaDe(estado.parceiros[i]).itens[k];
+            it.variedade = it.variedade === v ? '' : v;
+            salvar(); renderParceiros(); renderResumo();
+        };
+
+        // Segunda variedade já vem com a que ainda não foi usada (ex.: MASTER TSV + BRO 68 SYNGENTA)
+        window.adicionarItem = i => {
+            const e = entregaDe(estado.parceiros[i]);
+            const livre = VARIEDADES.find(v => !e.itens.some(it => it.variedade === v)) || '';
+            e.itens.push({ qtd: '', variedade: livre });
+            salvar(); renderParceiros();
+        };
+
+        window.removerItem = (i, k) => {
+            entregaDe(estado.parceiros[i]).itens.splice(k, 1);
+            salvar(); renderParceiros(); renderResumo();
+        };
+
+        window.aplicarDataTodos = () => {
+            const data = document.getElementById('dataTodos').value;
+            if (!data) return aviso('Escolha a data.', 'erro');
+            estado.parceiros.forEach(p => { entregaDe(p).data = data; });
+            salvar(); renderParceiros(); renderResumo();
+            aviso(`Data ${diaMes(data)} aplicada a todos.`);
+        };
+
+        // Tudo de uma vez: quantidades, variedades, culturas e datas voltam ao padrão e ninguém fica marcado
+        window.limparTudo = () => {
+            const temQtd = Object.values(estado.entregas).some(e => totalEnt(e) > 0);
+            if (!temQtd && !estado.marcados.length) return aviso('Não há dados para limpar.', 'erro');
+            abrirModal({
+                icone: 'eraser', tom: 'perigo', titulo: 'Limpar todos os dados?',
+                texto: 'Apaga as quantidades e variedades de todos os parceiros e desmarca todos, para começar um novo relatório.\nA lista de parceiros e as culturas cadastradas continuam salvas.', botao: 'Limpar',
+                acao: () => {
+                    estado.entregas = {};
+                    estado.marcados = [];
+                    cartaoAtivo = null;
+                    salvar(); render();
+                    aviso('Dados limpos. Pode começar um novo relatório.');
+                }
+            });
+        };
+
+        window.marcarTodos = todos => {
+            estado.marcados = todos ? estado.parceiros.slice() : [];
+            salvar(); renderParceiros(); renderResumo();
+        };
+
+        // ===== Envio =====
+        function enviar(acao) {
+            if (!preenchidos().length) return aviso('Preencha a quantidade de pelo menos um parceiro.', 'erro');
+            acao(montarTexto(REMETENTE));
+        }
+
+        window.copiarTexto = () => enviar(copiar);
+
+        async function copiar(texto) {
+            let ok = false;
+            try { await navigator.clipboard.writeText(texto); ok = true; } catch (e) {
+                const area = document.createElement('textarea');
+                area.value = texto; document.body.appendChild(area); area.select();
+                try { ok = document.execCommand('copy'); } catch (e2) {}
+                area.remove();
+            }
+            aviso(ok ? 'Copiado! É só colar no grupo do WhatsApp.' : 'Não foi possível copiar. Selecione o texto da prévia.', ok ? 'ok' : 'erro');
+        }
+
+        // ===== PDF: previsão de início da colheita (data de entrega + 60 dias) =====
+        const DIAS_COLHEITA = 60;
+        const somarDias = (iso, n) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return hojeIso(d); };
+        const dataBr = iso => iso.split('-').reverse().join('/');
+
+        // Número da semana no padrão ISO (semana começa na segunda; a semana 1 é a que tem a primeira quinta do ano)
+        function semanaIso(iso) {
+            const d = new Date(iso + 'T12:00:00');
+            d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);   // quinta-feira da mesma semana
+            const jan4 = new Date(d.getFullYear(), 0, 4, 12);
+            return 1 + Math.round(((d - jan4) / 86400000 - 3 + (jan4.getDay() + 6) % 7) / 7);
+        }
+        // "02/11/2026 (Sem. 45)"
+        const dataSem = iso => `${dataBr(iso)} (Sem. ${semanaIso(iso)})`;
+        // Período: "02/11/2026 a 06/11/2026 (Sem. 45)" ou "(Sem. 45 a 46)" se passar de uma semana
+        function faixaSem(datas) {
+            const de = datas[0], ate = datas[datas.length - 1];
+            if (de === ate) return dataSem(de);
+            const s1 = semanaIso(de), s2 = semanaIso(ate);
+            return `${dataBr(de)} a ${dataBr(ate)} (Sem. ${s1 === s2 ? s1 : s1 + ' a ' + s2})`;
+        }
+
+        // Bibliotecas do PDF: só carregam quando alguém pede o primeiro PDF
+        const scriptsCarregados = {};
+        function carregarScript(src) {
+            if (!scriptsCarregados[src]) {
+                scriptsCarregados[src] = new Promise((resolve, reject) => {
+                    const s = document.createElement('script');
+                    s.src = src;
+                    s.onload = resolve;
+                    s.onerror = () => { delete scriptsCarregados[src]; reject(new Error('Não foi possível carregar o gerador de PDF. Verifique a internet.')); };
+                    document.head.appendChild(s);
+                });
+            }
+            return scriptsCarregados[src];
+        }
+
+        // Logo da Estufa Morrinhos para o cabeçalho do PDF, reduzida (o arquivo original tem mais de 1 MB
+        // e deixaria o PDF pesado). Sem ela, o PDF sai sem logo. { url, proporcao: altura ÷ largura }
+        const LOGO = './Logo Agrícola Estufa Morrinhos.png';
+        async function logoDataUrl() {
+            try {
+                const img = new Image();
+                // Até 5 s para carregar; depois disso o PDF sai sem logo em vez de travar
+                await new Promise((ok, erro) => {
+                    img.onload = ok; img.onerror = erro;
+                    setTimeout(() => erro(new Error('logo demorou')), 5000);
+                    img.src = new URL(LOGO, location.href).href;
+                });
+                const larg = 300, alt = Math.round(larg * img.naturalHeight / img.naturalWidth);
+                const canvas = document.createElement('canvas');
+                canvas.width = larg; canvas.height = alt;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, larg, alt);
+                ctx.drawImage(img, 0, 0, larg, alt);
+                return { url: canvas.toDataURL('image/png'), proporcao: alt / larg };
+            } catch (e) { return null; }
+        }
+
+        const fmtHora = d => d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+        window.gerarPdf = async function() {
+            const lista = preenchidos();
+            if (!lista.length) return aviso('Preencha a quantidade de pelo menos um parceiro.', 'erro');
+            const btn = document.getElementById('pdfBtn');
+            const textoOriginal = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> GERANDO...';
+            icones();
+
+            try {
+                await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+                await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
+                const logo = await logoDataUrl();
+
+                // Uma linha por variedade, como na mensagem
+                const linhas = [];
+                lista.forEach(e => e.itens.filter(i => Number(i.qtd) > 0).forEach(i => linhas.push({
+                    parceiro: e.parceiro, cultura: culturaDe(e), variedade: i.variedade ? i.variedade.trim().toUpperCase() : '—',
+                    qtd: Number(i.qtd), entrega: e.data, colheita: somarDias(e.data, DIAS_COLHEITA)
+                })));
+                const total = linhas.reduce((s, l) => s + l.qtd, 0);
+                const colheitas = linhas.map(l => l.colheita).sort();
+                const faixa = faixaSem(colheitas);
+                // Mesmo formato da colheita prevista: "02/11/2026 a 06/11/2026"
+                const entregas = linhas.map(l => l.entrega).sort();
+                const faixaEntrega = faixaSem(entregas);
+                const culturas = porCultura(lista).map(g => g.cultura).join(' e ');
+                const parceiros = new Set(linhas.map(l => l.parceiro)).size;
+
+                // Quanto entra em colheita em cada data
+                const porColheita = {};
+                linhas.forEach(l => {
+                    const g = porColheita[l.colheita] = porColheita[l.colheita] || { qtd: 0, parceiros: new Set(), entrega: l.entrega };
+                    g.qtd += l.qtd; g.parceiros.add(l.parceiro);
+                });
+
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+                const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 14;
+                const VERDE = [22, 101, 52];
+                let y = 0;
+                const secao = (titulo) => {
+                    y = Math.max(y, doc.lastAutoTable ? doc.lastAutoTable.finalY : 0) + 9;
+                    if (y > H - 35) { doc.addPage(); y = 20; }
+                    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...VERDE);
+                    doc.text(titulo.toUpperCase(), M, y);
+                    doc.setDrawColor(...VERDE); doc.setLineWidth(0.4); doc.line(M, y + 1.5, W - M, y + 1.5);
+                    y += 4;
+                };
+                const tabela = (opcoes) => doc.autoTable(Object.assign({
+                    startY: y, margin: { left: M, right: M }, theme: 'grid',
+                    // Tudo centralizado (cabeçalho, linhas e total), para as colunas ficarem alinhadas
+                    styles: { font: 'helvetica', fontSize: 8, cellPadding: 1.8, textColor: [30, 41, 59], lineColor: [226, 232, 240], halign: 'center', valign: 'middle' },
+                    headStyles: { fillColor: VERDE, textColor: 255, fontStyle: 'bold', halign: 'center' },
+                    // Sem linha de total nas tabelas: o total entregue já está no Resumo
+                    alternateRowStyles: { fillColor: [248, 250, 252] }
+                }, opcoes));
+
+                // ----- Cabeçalho -----
+                // Logo com 18 mm de altura, sem distorcer
+                if (logo) { try { doc.addImage(logo.url, 'PNG', M, 10, 18 / logo.proporcao, 18); } catch (e) {} }
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(30, 41, 59);
+                doc.text('Resumo de Entrega - Estufa Morrinhos', M + 22, 17);
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(100, 116, 139);
+                doc.text(`${culturas} - Entrega ${periodoTitulo(lista)}`, M + 22, 22.5);
+                const agora = new Date();
+                doc.text(`Emitido em ${agora.toLocaleDateString('pt-BR')} ${fmtHora(agora)} por ${REMETENTE}`, M + 22, 27);
+                y = 32;
+
+                // ----- Resumo -----
+                secao('Resumo');
+                tabela({
+                    theme: 'plain', styles: { fontSize: 8.5, cellPadding: 1.5, halign: 'center', valign: 'middle' },
+                    // Rótulos 32 mm, valores 59 mm: cabe "30/12/2026 a 29/01/2027 (Sem. 53 a 5)" numa linha só
+                    columnStyles: { 0: { fontStyle: 'bold', textColor: [100, 116, 139], cellWidth: 32 }, 1: { cellWidth: 59 }, 2: { fontStyle: 'bold', textColor: [100, 116, 139], cellWidth: 32 }, 3: { cellWidth: 59 } },
+                    body: [
+                        ['Total Entregue', fmt(total), 'Parceiros', String(parceiros)],
+                        ['Período de Entrega', faixaEntrega, 'Cultura', culturas],
+                        ['Colheita Prevista', faixa, 'Início da Colheita', `Entrega + ${DIAS_COLHEITA} dias`]
+                    ]
+                });
+
+                // ----- Por parceiro -----
+                secao('Previsão por Parceiro');
+                tabela({
+                    head: [['Parceiro', 'Cultura', 'Variedade', 'Quantidade', 'Data de Entrega', 'Início da Colheita']],
+                    body: linhas.map(l => [l.parceiro, l.cultura, l.variedade, fmt(l.qtd), dataSem(l.entrega), dataSem(l.colheita)]),
+                    columnStyles: { 0: { fontStyle: 'bold' }, 5: { fontStyle: 'bold', textColor: VERDE } }
+                });
+
+                // ----- Por data de colheita -----
+                secao('Colheita por Data');
+                const datas = Object.keys(porColheita).sort();
+                tabela({
+                    head: [['Início da Colheita', 'Data de Entrega', 'Quantidade', 'Parceiros']],
+                    // "Valdir, Oliveira" -> "Valdir e Oliveira"; "A, B, C" -> "A, B e C"
+                    body: datas.map(d => {
+                        const nomes = [...porColheita[d].parceiros];
+                        const nomesTxt = nomes.length > 1 ? `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}` : nomes[0];
+                        return [dataSem(d), dataSem(porColheita[d].entrega), fmt(porColheita[d].qtd), nomesTxt];
+                    }),
+                    columnStyles: { 0: { fontStyle: 'bold', textColor: VERDE }, 2: { fontStyle: 'bold' } }
+                });
+
+                // ----- Rodapé com número da página -----
+                const paginas = doc.getNumberOfPages();
+                for (let i = 1; i <= paginas; i++) {
+                    doc.setPage(i);
+                    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(148, 163, 184);
+                    doc.text('Estufa Morrinhos · Resumo de Entrega', M, H - 8);
+                    doc.text(`Página ${i} de ${paginas}`, W - M, H - 8, { align: 'right' });
+                }
+
+                // "Resumo de Entrega - Estufa Morrinhos - 02-11 a 06-11.pdf"
+                const periodoArq = (lista[0].data === lista[lista.length - 1].data
+                    ? diaMes(lista[0].data) : `${diaMes(lista[0].data)} a ${diaMes(lista[lista.length - 1].data)}`).replace(/\//g, '-');
+                doc.save(`Resumo de Entrega - Estufa Morrinhos - ${periodoArq}.pdf`);
+            } catch (err) {
+                console.error(err);
+                aviso(err.message || 'Não foi possível gerar o PDF.', 'erro');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = textoOriginal;
+                icones();
+            }
+        };
+
+        // ===== Início =====
+        document.getElementById('dataTodos').value = hojeIso();
+        render();
+        // Saudação acompanha o relógio do aparelho (ex.: passou do meio-dia vira "Boa tarde")
+        setInterval(renderResumo, 60 * 1000);
+    </script>
+</body>
+</html>
